@@ -1,27 +1,35 @@
-export default async function handler(req, res) {
-  try {
-    const { prompt } = req.body;
+export const config = {
+  runtime: 'edge',
+};
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7
-      })
-    });
+export default async function handler(req) {
+  const { prompt } = await req.json();
 
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || '[No reply]';
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: "You are a helpful assistant that generates startup tags." },
+        { role: "user", content: prompt }
+      ]
+    })
+  });
 
-    res.status(200).json({ reply: text });
+  const data = await response.json();
+  const reply = data.choices?.[0]?.message?.content?.trim();
 
-  } catch (err) {
-    console.error("GPT Error:", err);
-    res.status(500).json({ error: 'AI invocation failed' });
-  }
+  return new Response(JSON.stringify({ reply }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*", // ✅ Enables CORS
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization"
+    }
+  });
 }
